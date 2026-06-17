@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAGCO CAD + Excel + Shell — HTB Style</title>
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.5.0/lib/xterm.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.5.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@14.0.0/dist/handsontable.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.0.0/dist/handsontable.full.min.css" />
+    <style>
+        body { margin:0; font-family: monospace; background:#111; color:#0f0; display:flex; flex-direction:column; height:100vh; }
+        #header { background:#222; padding:10px; text-align:center; font-size:18px; }
+        .container { display:flex; flex:1; overflow:hidden; }
+        #spreadsheet { flex:1; border-right:2px solid #333; overflow:auto; }
+        #cad { flex:1; border-right:2px solid #333; position:relative; background:#000; }
+        #terminal { flex:1; background:#000; }
+        canvas { width:100%; height:100%; }
+        .panel { display:flex; flex-direction:column; }
+    </style>
+</head>
+<body>
+    <div id="header">SAGCO PIPE DMS + WEIGHT MODEL + CLI SHELL (DARWIN REV 9) — HTB Vibes</div>
+    <div class="container">
+        <!-- Spreadsheet (Excel-like) -->
+        <div class="panel" style="flex: 1.2;">
+            <div id="spreadsheet"></div>
+        </div>
+        
+        <!-- CAD Canvas (AutoCAD-like pipe geometry) -->
+        <div class="panel" style="flex: 1;">
+            <div id="cad">
+                <canvas id="cadCanvas" width="800" height="600"></canvas>
+            </div>
+        </div>
+        
+        <!-- Terminal -->
+        <div class="panel" style="flex: 1;">
+            <div id="terminal"></div>
+        </div>
+    </div>
+
+    <script>
+        // === 1. SPREADSHEET (Handsontable - Excel-like) ===
+        const data = [
+            ["CUI#", "Circuit", "Est Hrs", "Act Hrs", "LNFT", "SQFT", "Status", "Variance %", "R Remaining"],
+            ["1", "F-1763-PR-1A", 290, 649.2, 75, 649.2, "COMPLETE", 154.4, -137.5],
+            ["2", "C-1602-O-1B", 1080, 464.2, 701, 0, "IN", -22.6, -38.4],
+            // Add more from your master.yaml
+        ];
+
+        const hot = new Handsontable(document.getElementById('spreadsheet'), {
+            data: data,
+            rowHeaders: true,
+            colHeaders: true,
+            licenseKey: 'non-commercial-and-evaluation',
+            contextMenu: true,
+            filters: true,
+            dropdownMenu: true,
+            cells: function(row, col) {
+                if (row === 0) return {readOnly: true};
+            }
+        });
+
+        // === 2. CAD CANVAS (Simple pipe drawing - AutoCAD style) ===
+        const canvas = document.getElementById('cadCanvas');
+        const ctx = canvas.getContext('2d');
+        let scale = 1;
+
+        function drawPipeSystem() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#0f0';
+            ctx.lineWidth = 4;
+            
+            // Example pipe path (U→R²→D etc. from your E-1706)
+            ctx.beginPath();
+            ctx.moveTo(100, 100);           // Start
+            ctx.lineTo(300, 100);           // R
+            ctx.lineTo(300, 300);           // D
+            ctx.lineTo(500, 300);           // R
+            ctx.lineTo(500, 150);           // U
+            ctx.stroke();
+            
+            // Fittings (valves, elbows)
+            ctx.fillStyle = '#ff0';
+            ctx.fillRect(290, 90, 20, 20);  // Elbow
+            ctx.fillRect(490, 140, 20, 20);
+            
+            ctx.font = '12px monospace';
+            ctx.fillStyle = '#0ff';
+            ctx.fillText('PIPE DMS: U→R²→D→F', 520, 160);
+            ctx.fillText('μT: 102 (Reactive Rack)', 100, 80);
+        }
+        drawPipeSystem();
+
+        // Drag to pan / zoom simulation
+        canvas.addEventListener('wheel', e => {
+            scale += e.deltaY * -0.001;
+            scale = Math.max(0.5, Math.min(scale, 3));
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
+            drawPipeSystem();
+        });
+
+        // === 3. TERMINAL (xterm.js - Runnable Shell) ===
+        const term = new Terminal({
+            cursorBlink: true,
+            theme: { background: '#000', foreground: '#0f0' }
+        });
+        term.open(document.getElementById('terminal'));
+        
+        term.write('SAGCO-CLI v0.1.0 (Darwin Rev 9) ready\r\n');
+        term.write('Type "help" for commands\r\n$ ');
+
+        let commandBuffer = '';
+        term.onData(data => {
+            if (data === '\r') {  // Enter
+                term.write('\r\n');
+                processCommand(commandBuffer);
+                commandBuffer = '';
+                term.write('$ ');
+            } else if (data === '\u007F') { // Backspace
+                if (commandBuffer.length > 0) {
+                    commandBuffer = commandBuffer.slice(0, -1);
+                    term.write('\b \b');
+                }
+            } else {
+                commandBuffer += data;
+                term.write(data);
+            }
+        });
+
+        function processCommand(cmd) {
+            cmd = cmd.trim();
+            if (cmd === 'help') {
+                term.write('compute | audit | predict | dashboard | pipe-dms | clear\r\n');
+            } else if (cmd === 'compute') {
+                term.write('Est: 4979 | Act: 3583.3 | R: 1395.7 | CPI: 1.39 | Savings: $107k\r\n');
+            } else if (cmd === 'pipe-dms') {
+                term.write('E-1706: U→R²→D→F→D²→B\'  μT=102\r\n');
+            } else if (cmd === 'clear') {
+                term.clear();
+            } else {
+                term.write(`Command not found: ${cmd}. Try "help"\r\n`);
+            }
+        }
+
+        // Sync spreadsheet changes to terminal demo
+        hot.addHook('afterChange', (changes) => {
+            if (changes) term.write('\r\n[Spreadsheet updated — recompute ready]\r\n$ ');
+        });
+    </script>
+</body>
+</html>
