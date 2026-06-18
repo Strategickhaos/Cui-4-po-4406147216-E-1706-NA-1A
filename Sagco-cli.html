@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAGCO-CLI v0.1.0 — Me10101-01</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap');
+
+  :root {
+    --bg:       #030810;
+    --surface:  #060f1e;
+    --border:   #0d2040;
+    --primary:  #00e5ff;
+    --accent:   #ff4b00;
+    --muted:    #1a3a5c;
+    --text:     #c8dff0;
+    --dim:      #4a7090;
+    --green:    #00ff88;
+    --warn:     #ffb800;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,229,255,0.013) 3px,
+      rgba(0,229,255,0.013) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(6,15,30,0.95);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 1.1rem;
+    letter-spacing: 0.12em;
+    color: var(--primary);
+    text-shadow: 0 0 18px rgba(0,229,255,0.5);
+  }
+
+  .logo span { color: var(--accent); }
+
+  .badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+  }
+
+  /* HERO */
+  .hero {
+    padding: 80px 40px 60px;
+    max-width: 960px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .hero-eyebrow {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .hero h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(2.2rem, 6vw, 4rem);
+    font-weight: 900;
+    line-height: 1.05;
+    color: #fff;
+    text-shadow: 0 0 40px rgba(0,229,255,0.2);
+    margin-bottom: 8px;
+  }
+
+  .hero h1 .cli { color: var(--primary); }
+  .hero h1 .ver { color: var(--accent); font-size: 0.5em; vertical-align: middle; }
+
+  .hero-sub {
+    font-size: 1rem;
+    color: var(--dim);
+    font-family: 'Share Tech Mono', monospace;
+    margin-bottom: 36px;
+    letter-spacing: 0.05em;
+  }
+
+  .hero-desc {
+    font-size: 1.05rem;
+    color: var(--text);
+    line-height: 1.7;
+    max-width: 600px;
+    margin-bottom: 40px;
+  }
+
+  /* TERMINAL BLOCK — the signature element */
+  .terminal {
+    background: #000d1a;
+    border: 1px solid var(--primary);
+    border-radius: 4px;
+    padding: 0;
+    box-shadow:
+      0 0 0 1px rgba(0,229,255,0.08),
+      0 0 40px rgba(0,229,255,0.08),
+      inset 0 0 60px rgba(0,0,0,0.6);
+    max-width: 720px;
+    margin-bottom: 60px;
+    animation: termglow 4s ease-in-out infinite alternate;
+  }
+
+  @keyframes termglow {
+    from { box-shadow: 0 0 20px rgba(0,229,255,0.07), 0 0 0 1px rgba(0,229,255,0.1); }
+    to   { box-shadow: 0 0 50px rgba(0,229,255,0.18), 0 0 0 1px rgba(0,229,255,0.22); }
+  }
+
+  .term-bar {
+    background: var(--muted);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #febc2e; }
+  .dot-g { background: #28c840; }
+
+  .term-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--dim);
+    margin-left: auto;
+    letter-spacing: 0.08em;
+  }
+
+  .term-body {
+    padding: 20px 24px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.9;
+  }
+
+  .prompt { color: var(--green); }
+  .cmd    { color: #fff; }
+  .out    { color: var(--primary); }
+  .out-dim{ color: var(--dim); }
+  .out-ok { color: var(--green); }
+  .out-warn{ color: var(--warn); }
+  .cursor {
+    display: inline-block;
+    width: 8px; height: 14px;
+    background: var(--primary);
+    vertical-align: middle;
+    animation: blink 1s step-end infinite;
+    margin-left: 2px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* STATS ROW */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    max-width: 720px;
+    margin-bottom: 64px;
+  }
+
+  .stat {
+    background: var(--surface);
+    padding: 20px 24px;
+  }
+
+  .stat-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-val.accent { color: var(--accent); }
+  .stat-val.green  { color: var(--green); }
+
+  .stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* SECTION */
+  section {
+    max-width: 960px;
+    margin: 0 auto 64px;
+    padding: 0 40px;
+  }
+
+  .sec-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* COMMAND GRID */
+  .cmd-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  .cmd-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 16px 20px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .cmd-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 16px rgba(0,229,255,0.08);
+  }
+
+  .cmd-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--primary);
+    margin-bottom: 6px;
+  }
+
+  .cmd-desc {
+    font-size: 0.82rem;
+    color: var(--dim);
+    line-height: 1.5;
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 24px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .footer-id {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+  }
+
+  .footer-id span { color: var(--primary); }
+
+  .gh-link {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--accent);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    border: 1px solid var(--accent);
+    padding: 6px 14px;
+    border-radius: 2px;
+    transition: background 0.2s;
+  }
+  .gh-link:hover { background: rgba(255,75,0,0.12); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">SAGCO<span>-</span>CLI</div>
+  <div class="badge">Me10101-01 · Strategickhaos DAO LLC · EIN 39-2900295</div>
+</header>
+
+<div class="hero">
+  <div class="hero-eyebrow">// sovereign autonomous governance command organism</div>
+  <h1><span class="cli">SAGCO-CLI</span> <span class="ver">v0.1.0</span></h1>
+  <div class="hero-sub">Me10101-01 · StrategicKhaos Swarm Intelligence</div>
+  <p class="hero-desc">
+    A first-principles CLI built by Dom Garza (Me10101) — SPRAT Level 3 field operator, 
+    sovereign inventor, SNHU CS+Cybersecurity candidate. SAGCO-CLI is the command surface 
+    of a 171+ invention ecosystem. Everything verifiable. Everything signed.
+  </p>
+
+  <div class="terminal">
+    <div class="term-bar">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+      <div class="term-title">sagco@athena:~</div>
+    </div>
+    <div class="term-body">
+      <div><span class="prompt">sagco@athena</span> <span class="cmd">sagco --version</span></div>
+      <div><span class="out">SAGCO-CLI v0.1.0 · FlameLang M1 LOCKED · commit 3cd9836f</span></div>
+      <div>&nbsp;</div>
+      <div><span class="prompt">sagco@athena</span> <span class="cmd">sagco status</span></div>
+      <div><span class="out-ok">✓ FlameLang M1    49/49 tests PASS</span></div>
+      <div><span class="out-ok">✓ SwarmGate       DEPLOYED · Trinity BFT active</span></div>
+      <div><span class="out-ok">✓ Qdrant + Redis   MESH ONLINE</span></div>
+      <div><span class="out-warn">⚡ FlameLang M2    IN PROGRESS — type system build</span></div>
+      <div><span class="out-dim">◦ SAGCO-OS        BOOTS IN VM · bare metal pending</span></div>
+      <div>&nbsp;</div>
+      <div><span class="prompt">sagco@athena</span> <span class="cmd">sagco inv query --tier diamond</span></div>
+      <div><span class="out">INV-001 SAGCO-OS · INV-036 FlameLang · INV-070 Chain Breaker</span></div>
+      <div><span class="out">INV-147 VideoForge · INV-171 FGCP · +6 more</span></div>
+      <div>&nbsp;</div>
+      <div><span class="prompt">sagco@athena</span> <span class="cmd">█</span><span class="cursor"></span></div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val">171+</div>
+      <div class="stat-label">Inventions Documented</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val accent">49/49</div>
+      <div class="stat-label">FlameLang M1 Tests</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val green">33/33</div>
+      <div class="stat-label">S100E Exam Gate</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">3.73</div>
+      <div class="stat-label">SNHU GPA</div>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="sec-label">// core commands · v0.1.0 surface</div>
+  <div class="cmd-grid">
+    <div class="cmd-card">
+      <div class="cmd-name">sagco status</div>
+      <div class="cmd-desc">Full ecosystem health — FlameLang, SwarmGate, mesh nodes, active builds.</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">sagco inv &lt;query&gt;</div>
+      <div class="cmd-desc">Query the 171+ invention registry. Filter by tier, class, or verification status.</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">sagco wave</div>
+      <div class="cmd-desc">Hash-collision fingerprint engine. The command that surfaced INV-* anomalies.</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">sagco capsule freeze</div>
+      <div class="cmd-desc">Context De-Bloat Capsule — seal current session state for clean handoff.</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">sagco litho log</div>
+      <div class="cmd-desc">Tamper-evident Merkle-chain logger. Every entry SHA-256 anchored.</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">sagco lens &lt;circuit&gt;</div>
+      <div class="cmd-desc">CUI field inspection targeting. C-1602-O-1B verified. LyondellBasell-hardened.</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">sagco sync --evm</div>
+      <div class="cmd-desc">SAGCO-SYNC Earned Value Management engine. Labor stream separation built-in.</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">sagco reclass</div>
+      <div class="cmd-desc">Three-state reclassification detector. Ground-crew hour separation, CPI defense.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-label">// verification chain · trust nothing until 100-angle crossfire</div>
+  <div class="cmd-grid">
+    <div class="cmd-card">
+      <div class="cmd-name">FlameLang M1 LOCKED</div>
+      <div class="cmd-desc">commit 3cd9836f · 49/49 tests · push f6dab619 · 2026-02-16</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">SAGCO-OS</div>
+      <div class="cmd-desc">K:\codio-SAGCO-OS-LIVE-TEST · GitHub public anchor · 2026-02-15</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">INV-171 FGCP</div>
+      <div class="cmd-desc">Friction-to-Governance Conversion Protocol · registered 2026-02-23</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">MCP Server</div>
+      <div class="cmd-desc">1819 lines · zero external deps · 10/10 CBT gates PASS</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-id">
+    <span>SAGCO-CLI v0.1.0</span> · Strategickhaos DAO LLC · EIN 39-2900295 · ORCID 0009-0005-2996-3526
+  </div>
+  <a class="gh-link" href="https://github.com/strategickhaos-swarm-intelligence" target="_blank">
+    github → Me10101-01
+  </a>
+</footer>
+
+</body>
+</html>
